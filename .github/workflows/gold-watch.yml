@@ -1,0 +1,55 @@
+name: gold-watch
+
+on:
+  schedule:
+    - cron: "*/15 * * * 0-5"
+    - cron: "0 12 * * 1-5"
+    - cron: "30 22 * * 5"
+    - cron: "0 23 * * 0"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "test | alert | morning | preview | weekly"
+        default: "test"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gold-watch
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Choisir le mode
+        id: m
+        run: |
+          case "${{ github.event.schedule }}" in
+            "*/15 * * * 0-5") M=alert;;
+            "0 12 * * 1-5") M=morning;;
+            "30 22 * * 5") M=weekly;;
+            "0 23 * * 0") M=preview;;
+            *) M="${{ github.event.inputs.mode }}";;
+          esac
+          echo "mode=$M" >> "$GITHUB_OUTPUT"
+      - name: Exécuter
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python main.py "${{ steps.m.outputs.mode }}"
+      - name: Sauvegarder l'état
+        if: steps.m.outputs.mode == 'alert'
+        run: |
+          git config user.name "gold-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add seen.json
+          git diff --cached --quiet || (git commit -m "state" && git pull --rebase && git push)

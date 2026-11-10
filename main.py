@@ -329,7 +329,7 @@ def send_groups(scored):
         its = [it for it in scored if it["group"] == group and it["impact"] >= IMPACT_MIN]
         its.sort(key=lambda x: (-x["impact"], -x["ts"].timestamp()))
         if its:
-            body = "\n\n".join(fmt_item(it, link=(group != "squawk")) for it in its[:MAX_PER_GROUP])
+            body = "\n\n".join(fmt_item(it) for it in its[:MAX_PER_GROUP])
             send_telegram(f"{HEAD[group]}\n{SEP}\n\n{body}")
 
 

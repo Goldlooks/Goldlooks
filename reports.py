@@ -42,8 +42,11 @@ def source_line(insts):
     last = max(i["last"] for i in insts)
     age = (dt.datetime.now(TZ) - last).total_seconds() / 60
     flag = "retardé / indicatif" if age > 20 else "quasi temps réel (indicatif)"
-    return (f"ℹ️ Source prix: Yahoo Finance · dernière bougie {last.strftime('%H:%M')} Toronto "
-            f"(il y a {int(age)} min) · {flag}")
+    syms = ", ".join(sorted(set(L.SRC.values())))
+    fut = "\n⚠️ Un des prix vient d'un FUTURES (=F), pas du CFD spot: écart possible avec ton broker." \
+        if any(v.endswith("=F") for v in L.SRC.values()) else ""
+    return (f"ℹ️ Source prix: Yahoo Finance ({syms}) · dernière bougie {last.strftime('%H:%M')} Toronto "
+            f"(il y a {int(age)} min) · {flag}{fut}")
 
 
 def price_block(i):

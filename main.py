@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Gold Watch v3 - XAUUSD / DXY / argent. Rapports et alertes via Telegram.
 
-Modes: test | all | sources | alert | briefing | weekly | liquidity | open-<asia|london|ny> | end-<...>
+Modes: test | all | prices | sources | alert | briefing | weekly | liquidity | open-<asia|london|ny> | end-<...>
 """
 import sys
 import traceback
@@ -168,6 +168,16 @@ if __name__ == "__main__":
             R.price_block(i) for i in m.values() if i) + "\n\n" + R.source_line([i for i in m.values() if i]))
     elif mode == "sources":
         mode_sources()
+    elif mode == "prices":
+        lines = ["🔎 TEST DES PRIX"]
+        for nm, cfg in L.INSTR.items():
+            for sym in cfg[0]:
+                try:
+                    b = core.yahoo_bars(sym, "15m", "1mo")
+                    lines.append(f"✅ {nm} {sym}: {len(b)} bougies, dernier prix {b[-1][4]:,.2f}")
+                except Exception as e:
+                    lines.append(f"❌ {nm} {sym}: {str(e)[:90]}")
+        send_telegram("\n".join(lines))
     elif mode == "all":
         mode_all()
     elif mode == "alert":

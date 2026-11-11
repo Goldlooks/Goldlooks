@@ -102,20 +102,22 @@ def clean_html(s):
 
 # ---------- prix (Yahoo Finance: indicatif, souvent retardé) ----------
 def yahoo_bars(sym, interval, rng):
+    """Essaie les deux serveurs Yahoo; un 404 = ce symbole n'existe pas chez eux (pas de retry inutile)."""
     last = None
-    for attempt in range(3):
-        try:
-            r = requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
-                             f"?interval={interval}&range={rng}", headers=UA, timeout=25)
-            r.raise_for_status()
-            res = r.json()["chart"]["result"][0]
-            q = res["indicators"]["quote"][0]
-            return [(dt.datetime.fromtimestamp(t, UTC), o, h, l, c)
-                    for t, o, h, l, c in zip(res["timestamp"], q["open"], q["high"], q["low"], q["close"])
-                    if None not in (o, h, l, c)]
-        except Exception as e:
-            last = e
-            time.sleep(2 * (attempt + 1))
+    for attempt in range(2):
+        for host in ("query1", "query2"):
+            try:
+                r = requests.get(f"https://{host}.finance.yahoo.com/v8/finance/chart/{sym}"
+                                 f"?interval={interval}&range={rng}", headers=UA, timeout=25)
+                r.raise_for_status()
+                res = r.json()["chart"]["result"][0]
+                q = res["indicators"]["quote"][0]
+                return [(dt.datetime.fromtimestamp(t, UTC), o, h, l, c)
+                        for t, o, h, l, c in zip(res["timestamp"], q["open"], q["high"], q["low"], q["close"])
+                        if None not in (o, h, l, c)]
+            except Exception as e:
+                last = e
+        time.sleep(2)
     raise last
 
 

@@ -13,11 +13,13 @@ TZ = core.TZ
 UTC = core.UTC
 
 # nom: (symbole Yahoo, décimales, pas des niveaux psychologiques, tolérance equal highs/lows en %)
+# symboles Yahoo à essayer dans l'ordre. Les futures (=F) ne sont PAS du CFD spot: écart possible, signalé dans les rapports.
 INSTR = {
-    "XAUUSD": ("XAUUSD=X", 2, 50, 0.04),
-    "XAGUSD": ("XAGUSD=X", 3, 1, 0.10),
-    "DXY": ("DX-Y.NYB", 3, 1, 0.05),
+    "XAUUSD": (["XAUUSD=X", "GC=F"], 2, 50, 0.04),
+    "XAGUSD": (["XAGUSD=X", "SI=F"], 3, 1, 0.10),
+    "DXY": (["DX-Y.NYB", "DX=F"], 3, 1, 0.05),
 }
+SRC = {}   # nom -> symbole réellement utilisé
 SWING_N = int(os.getenv("SWING_N", "3"))  # bougies 1h de chaque côté pour valider un swing
 
 # clé: (nom, (h, m) ouverture, (h, m) fermeture, jours d'ouverture lun=0) - heure de Toronto
@@ -37,10 +39,18 @@ _cache = {}
 def get_bars(name):
     """Bougies 15 min (≈ 1 mois): [(ts_utc, open, high, low, close)]."""
     if name not in _cache:
-        bars = core.yahoo_bars(INSTR[name][0], "15m", "1mo")
-        if len(bars) < 50:
-            raise RuntimeError(f"{name}: pas assez de données ({len(bars)} bougies)")
-        _cache[name] = bars
+        errs = []
+        for sym in INSTR[name][0]:
+            try:
+                bars = core.yahoo_bars(sym, "15m", "1mo")
+                if len(bars) < 50:
+                    raise RuntimeError(f"seulement {len(bars)} bougies")
+                _cache[name], SRC[name] = bars, sym
+                break
+            except Exception as e:
+                errs.append(f"{sym}: {str(e)[:60]}")
+        else:
+            raise RuntimeError(f"{name}: aucune source de prix ({' | '.join(errs)})")
     return _cache[name]
 
 
